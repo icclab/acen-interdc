@@ -5,7 +5,7 @@ dev tun
 ifconfig 10.8.0.2 10.8.0.1
 
 #Generate your own static key using" openvpn --genkey --secret static.key"
-secret /etc/openvpnv/static.key
+secret /etc/openvpn/static.key
 
 # TO BE CUSTOMIZED
 # Route to client's subnet

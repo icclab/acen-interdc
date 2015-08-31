@@ -14,11 +14,11 @@ cp ./static.key /etc/openvpn/
 
 # Customize server config template
 sed -e 's/SERVER_SUBNET/'$SERVER_SUBNET'/g' \
-    -e 's/SERVER_MASK/'$SERVER_SUBNET_MASK'/g' \
+    -e 's/SERVER_MASK/'$SERVER_MASK'/g' \
     -e 's/CLIENT_SUBNET/'$CLIENT_SUBNET'/g' \
-    -e 's/CLIENT_MASK/'$CLIENT_SUBNET_MASK'/g' \
+    -e 's/CLIENT_MASK/'$CLIENT_MASK'/g' \
     < ./server.conf.template > ./server.conf
 
-cp ./server.conf /etc/openpvpn/
+cp ./server.conf /etc/openvpn/
 
-service openvpn start
+service openvpn restart

@@ -1,0 +1,12 @@
+# OpenVPN server
+remote SERVER_ADDRESS
+
+dev tun
+ifconfig 10.8.0.2 10.8.0.1
+
+#Generate your own static key using" openvpn --genkey --secret static.key"
+secret /etc/openvpnv/static.key
+
+# TO BE CUSTOMIZED
+# Route to client's subnet
+route SERVER_SUBNET SERVER_MASK

@@ -1,0 +1,137 @@
+heat_template_version: 2013-05-23
+
+description: NFV UC1 - multi region InterDC connectivity
+
+parameters:
+  api_endpoint:
+    type: string
+    description: Cloudstack API endpoint
+
+  api_key:
+    type: string
+    description: API key
+    
+  api_secret:
+    type: string
+    description: API secret key
+
+  service_offering_id:
+    type: string
+    description: CloudStack service offering ID
+
+  template_id:
+    type: string
+    description: CloudStack template ID
+
+  zone_id:
+    type: string
+    description: CloudStack zone ID
+
+  network_offering_id:
+    type: string
+    description: CloudStack network offering ID
+
+  subnet_A:
+    type: string
+    description: Subnet A
+
+  subnet_B:
+    type: string
+    description: Subnet B
+
+  gateway_A:
+    type: string
+    description: Gateway A
+
+  gateway_B:
+    type: string
+    description: Gateway B
+
+  mask_A:
+    type: string
+    description: Mask A
+
+  mask_B:
+    type: string
+    description: Mask B
+
+  vpc_id:
+    type: string
+    description: CloudStack VPC ID
+
+  public_ssh_key:
+    type: string
+    description: Public SSH key
+
+  acl_id:
+    type: string
+    description: ACL ID
+
+  script:
+    type: string
+    description: Init script
+
+resources:
+  network:
+    type: Cloudstack::Network::Network
+    properties:
+      api_endpoint: { get_param: api_endpoint }
+      api_key: { get_param: api_key }
+      api_secret: { get_param: api_secret }
+      name: network-A
+      display_text: network-B
+      network_offering_id: { get_param: network_offering_id }
+      zone_id: { get_param: zone_id }
+      gateway: { get_param: gateway_A }
+      netmask: { get_param: mask_A }
+      vpc_id: { get_param: vpc_id }
+      acl_id: { get_param: acl_id }
+
+  vpn_server:
+    type: Cloudstack::Compute::VirtualMachine
+    properties:
+      api_endpoint: { get_param: api_endpoint }
+      api_key: { get_param: api_key }
+      api_secret: { get_param: api_secret }
+      name: vpn-server
+      template_id: { get_param: template_id }
+      service_offering_id: { get_param: service_offering_id }
+      network_ids: [ { get_attr: [ network, id ] } ]
+      zone_id: { get_param: zone_id }
+      user_data:
+        str_replace:
+          template: { get_param: script }
+          params:
+            $vpn_server_addr: { get_attr: [ vpn_server_floating_ip, ipaddress ] }
+            $server_subnet: { get_param: subnet_A }
+            $server_mask: { get_param: mask_A }
+            $client_subnet: { get_param: subnet_B }
+            $client_mask: { get_param: mask_B }
+            $sshkey: { get_param: public_ssh_key }
+
+  vpn_server_floating_ip:
+    type: Cloudstack::Network::Address
+    properties:
+      api_endpoint: { get_param: api_endpoint }
+      api_key: { get_param: api_key }
+      api_secret: { get_param: api_secret }
+      vpc_id: { get_param: vpc_id }
+
+  vpn_server_nat:
+    type: Cloudstack::Network::StaticNAT
+    properties:
+      api_endpoint: { get_param: api_endpoint }
+      api_key: { get_param: api_key }
+      api_secret: { get_param: api_secret }
+      ip_address_id: { get_attr: [ vpn_server_floating_ip, id ] }
+      virtual_machine_id: { get_attr: [ vpn_server, id ] }
+      network_id: { get_attr: [ network, id ] }
+
+
+outputs:
+  vpn_server_external_ip:
+    description: Instance external IP address
+    value: { get_attr: [ vpn_server_floating_ip, ipaddress ] }
+  vpn_server_private_ip:
+    description: Instance internal IP address
+    value: { get_attr: [ vpn_server, network_ip ] }

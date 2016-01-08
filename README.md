@@ -1,4 +1,4 @@
-ACEN NFV USE CASE - Inter-DC connectivity
+# ACEN NFV USE CASE - Inter-DC connectivity
 
 Simple OpenVPN client-server setup providing inter-datacenter connectivity.
 
@@ -18,3 +18,10 @@ Example network schema :
     |VM 1             |       |VM 2             |
     |eth0: 10.0.0.8/24|       |eth0: 10.0.1.7/24|
     -------------------       -------------------
+
+## Heat Orchestration Templates
+
+More information on multi-region InterDC Heat orchestration templates can be found [here](https://github.com/icclab/acen-interdc/blob/master/Heat/README.md).
+
+## Acknowledgment
+This work was made possible by the [KTI ACEN project](http://blog.zhaw.ch/icclab/acen-begins/) in collaboration with [Citrix](https://www.citrix.com/) and [Exoscale](https://www.exoscale.ch/).

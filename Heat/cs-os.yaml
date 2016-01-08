@@ -5,7 +5,7 @@ description: NFV UC1 - multi region InterDC connectivity (CloudStack - OpenStack
 parameters:
   api_endpoint:
     type: string
-    description: CloudStack API endpoint
+    description: Cloudstack API endpoint
 
   api_key:
     type: string
@@ -34,10 +34,12 @@ parameters:
   subnet_A:
     type: string
     description: Subnet A
+    default: 10.2.0.0
 
   subnet_B:
     type: string
     description: Subnet B
+    default: 10.2.3.0
 
   gateway_A:
     type: string
@@ -47,7 +49,7 @@ parameters:
   gateway_B:
     type: string
     description: Gateway B
-    default: 10.3.4.1
+    default: 10.2.3.1
 
   mask_A:
     type: string
@@ -69,11 +71,7 @@ parameters:
 
   acl_id:
     type: string
-    description: CloudStackACL ID
-
-  private_net_id:
-    type: string
-    description: OpenStack private network ID
+    description: CloudStack ACL ID
 
   public_net_id:
     type: string
@@ -86,6 +84,11 @@ parameters:
   image:
     type: string
     description: OpenStack VM image
+
+  cidr:
+    type: string
+    description: OpenStack network CIDR
+    default: 10.2.3.0/24
 
 resources:
   vpn_server_stack:
@@ -128,8 +131,9 @@ resources:
         subnet_B: { get_param: subnet_B }
         mask_A: { get_param: mask_A }
         mask_B: { get_param: mask_B }
-        private_mgmt_net: { get_param: private_net_id }
         public_net: { get_param: public_net_id }
         public_ssh_key: { get_param: public_ssh_key }
         flavor: { get_param: flavor }
         image: {get_param: image }
+        gateway: { get_param: gateway_B }
+        cidr: { get_param: cidr }

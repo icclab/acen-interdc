@@ -44,7 +44,40 @@ parameters:
     type: string
     description: OpenStack VM image
 
+  gateway:
+    type: string
+    description: OpenStack network GW
+
+  cidr:
+    type: string
+    description: OpenStack network CIDR
+
 resources:
+
+  private_net:
+    type: OS::Neutron::Net
+    properties:
+      name: acen-net
+
+  private_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: private_net }
+      cidr: { get_param: cidr }
+      gateway_ip: { get_param: gateway }
+
+  router:
+    type: OS::Neutron::Router
+    properties:
+      external_gateway_info:
+        network: { get_param: public_net }
+
+  router_interface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router_id: { get_resource: router }
+      subnet_id: { get_resource: private_subnet }
+
   sg:
     type: OS::Neutron::SecurityGroup
     properties:
@@ -80,7 +113,7 @@ resources:
   my_port:
     type: OS::Neutron::Port
     properties:
-      network_id: {get_param: private_mgmt_net}
+      network_id: {get_resource: private_net}
       replacement_policy: AUTO
       security_groups: [{ get_resource: sg }]
 

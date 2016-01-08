@@ -1,4 +1,5 @@
 #!/bin/bash
+echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 echo "$sshkey" >> ~/.ssh/authorized_keys
 touch /tmp/vars
 echo SERVER_ADDRESS=$vpn_server_addr >> /tmp/vars

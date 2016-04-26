@@ -17,10 +17,6 @@ parameters:
     type: string
     description: Mask B
 
-  private_mgmt_net:
-    type: string
-    description: ID of private network mgmt
-
   public_net:
     type: string
     description: ID of public network
@@ -96,9 +92,10 @@ resources:
         port_range_min: 1194
         port_range_max: 1194
 
-  server:
+  vpn_endpoint:
     type: OS::Nova::Server
     properties:
+      name: acen-vpn-client
       image: { get_param: image }
       flavor: { get_param: flavor }
       networks:

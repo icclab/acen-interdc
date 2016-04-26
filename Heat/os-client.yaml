@@ -48,7 +48,11 @@ parameters:
     type: string
     description: OpenStack network GW
 
-  cidr:
+  cidr_A:
+    type: string
+    description: OpenStack network CIDR
+
+  cidr_B:
     type: string
     description: OpenStack network CIDR
 
@@ -63,7 +67,7 @@ resources:
     type: OS::Neutron::Subnet
     properties:
       network_id: { get_resource: private_net }
-      cidr: { get_param: cidr }
+      cidr: { get_param: cidr_B }
       gateway_ip: { get_param: gateway }
 
   router:
@@ -101,7 +105,7 @@ resources:
         - port: { get_resource: my_port }
       user_data:
         str_replace:
-          template: { get_param: script}
+          template: { get_param: script }
           params:
             $vpn_server_addr: { get_param: vpn_server_external_ip }
             $server_subnet: { get_param: subnet_A }
@@ -116,6 +120,7 @@ resources:
       network_id: {get_resource: private_net}
       replacement_policy: AUTO
       security_groups: [{ get_resource: sg }]
+      allowed_address_pairs: [{"ip_address": { get_param: cidr_A }}]
 
   my_floating_ip:
     type: OS::Neutron::FloatingIP

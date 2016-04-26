@@ -41,6 +41,16 @@ parameters:
     description: Subnet B
     default: 10.2.3.0
 
+  cidr_A:
+    type: string
+    description: network A CIDR
+    default: 10.2.0.0/24
+
+  cidr_B:
+    type: string
+    description: network B CIDR
+    default: 10.2.3.0/24
+
   gateway_A:
     type: string
     description: Gateway A
@@ -84,11 +94,6 @@ parameters:
   image:
     type: string
     description: OpenStack VM image
-
-  cidr:
-    type: string
-    description: OpenStack network CIDR
-    default: 10.2.3.0/24
 
 resources:
   vpn_server_stack:
@@ -136,4 +141,5 @@ resources:
         flavor: { get_param: flavor }
         image: {get_param: image }
         gateway: { get_param: gateway_B }
-        cidr: { get_param: cidr }
+        cidr_A: { get_param: cidr_A }
+        cidr_B: { get_param: cidr_B }

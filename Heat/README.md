@@ -15,3 +15,11 @@ Orchestrates OpenVPN Client (OpenStack) and OpenVPN Server (CloudStack) machines
 ```
 cs-os.yaml
 ```
+
+## OpenStack <-> CloudStack
+
+Orchestrates OpenVPN Client (CloudStack) and OpenVPN Server (OpenStack) machines and establishes a VPN connection between CloudStack and OpenStack networks.
+
+```
+os-cs.yaml
+```

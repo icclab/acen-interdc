@@ -1,0 +1,127 @@
+heat_template_version: 2013-05-23
+
+parameters:
+  subnet_A:
+    type: string
+    description: Subnet A
+
+  subnet_B:
+    type: string
+    description: Subnet B
+
+  mask_A:
+    type: string
+    description: Mask A
+
+  mask_B:
+    type: string
+    description: Mask B
+
+  public_net:
+    type: string
+    description: ID of public network
+
+  public_ssh_key:
+    type: string
+
+  script:
+    type: string
+    description: Init script
+
+  flavor:
+    type: string
+    description: OpenStack VM flavor
+
+  image:
+    type: string
+    description: OpenStack VM image
+
+  gateway:
+    type: string
+    description: OpenStack network GW
+
+  cidr_A:
+    type: string
+    description: OpenStack network CIDR
+
+  cidr_B:
+    type: string
+    description: OpenStack network CIDR
+
+resources:
+
+  private_net:
+    type: OS::Neutron::Net
+    properties:
+      name: acen-net
+
+  private_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: private_net }
+      cidr: { get_param: cidr_B }
+      gateway_ip: { get_param: gateway }
+
+  router:
+    type: OS::Neutron::Router
+    properties:
+      external_gateway_info:
+        network: { get_param: public_net }
+
+  router_interface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router_id: { get_resource: router }
+      subnet_id: { get_resource: private_subnet }
+
+  sg:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      name: the_sg
+      description: Ping, SSH, OpenVPN
+      rules:
+      - protocol: icmp
+      - protocol: tcp
+        port_range_min: 22
+        port_range_max: 22
+      - protocol: udp
+        port_range_min: 1194
+        port_range_max: 1194
+
+  vpn_endpoint:
+    type: OS::Nova::Server
+    properties:
+      name: 'acen-vpn-server'
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      networks:
+        - port: { get_resource: my_port }
+      user_data:
+        str_replace:
+          template: { get_param: script }
+          params:
+            $vpn_server_addr: { get_attr: [ my_floating_ip, floating_ip_address ] }
+            $server_subnet: { get_param: subnet_A }
+            $server_mask: { get_param: mask_A }
+            $client_subnet: { get_param: subnet_B }
+            $client_mask: { get_param: mask_B }
+            $sshkey: { get_param: public_ssh_key}
+
+  my_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: {get_resource: private_net}
+      replacement_policy: AUTO
+      security_groups: [{ get_resource: sg }]
+      allowed_address_pairs: [{"ip_address": { get_param: cidr_A }}]
+
+  my_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network_id: { get_param: public_net}
+      port_id: { get_resource:  my_port }
+
+outputs:
+  vpn_server_external_ip:
+    description: Instance external ip
+    value: { get_attr: [ my_floating_ip, floating_ip_address ] }

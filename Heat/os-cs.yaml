@@ -1,0 +1,145 @@
+heat_template_version: 2013-05-23
+
+description: NFV UC1 - multi region InterDC connectivity (CloudStack - OpenStack).
+
+parameters:
+  api_endpoint:
+    type: string
+    description: Cloudstack API endpoint
+
+  api_key:
+    type: string
+    description: API key
+
+  api_secret:
+    type: string
+    description: API secret key
+
+  service_offering_id:
+    type: string
+    description: CloudStack service offering ID
+
+  template_id:
+    type: string
+    description: CloudStack template ID
+
+  zone_id:
+    type: string
+    description: CloudStack zone ID
+
+  network_offering_id:
+    type: string
+    description: CloudStack network offering ID
+
+  subnet_A:
+    type: string
+    description: Subnet A
+
+  subnet_B:
+    type: string
+    description: Subnet B
+
+  cidr_A:
+    type: string
+    description: network A CIDR
+
+  cidr_B:
+    type: string
+    description: network B CIDR
+
+  gateway_A:
+    type: string
+    description: Gateway A
+
+  gateway_B:
+    type: string
+    description: Gateway B
+
+  mask_A:
+    type: string
+    description: Mask A
+
+  mask_B:
+    type: string
+    description: Mask B
+
+  vpc_A_id:
+    type: string
+    description: CloudStack VPC ID
+
+  public_ssh_key:
+    type: string
+    description: Public SSH key
+
+  acl_id:
+    type: string
+    description: ACL ID
+
+  private_net_id:
+    type: string
+    description: OpenStack ID of private network
+
+  public_net_id:
+    type: string
+    description: OpenStack ID of public network
+
+  flavor:
+    type: string
+    description: OpenStack VM flavor
+
+  image:
+    type: string
+    description: OpenStack VM image
+
+  public_net:
+    type: string
+    description: OpenStack public net ID
+
+resources:
+  vpn_server_stack:
+    type: OS::Heat::Stack
+    properties:
+      context:
+        region_name: RegionOne
+      template: { get_file: "os-server.yaml" }
+      timeout: 60
+      parameters:
+        script: { get_file: ./scripts/setup_client.sh }
+        subnet_A: { get_param: subnet_A }
+        subnet_B: { get_param: subnet_B }
+        mask_A: { get_param: mask_A }
+        mask_B: { get_param: mask_B }
+        public_net: { get_param: public_net_id }
+        public_ssh_key: { get_param: public_ssh_key }
+        flavor: { get_param: flavor }
+        image: {get_param: image }
+        gateway: { get_param: gateway_B }
+        cidr_A: { get_param: cidr_A }
+        cidr_B: { get_param: cidr_B }
+
+  vpn_client_stack:
+    type: OS::Heat::Stack
+    properties:
+      context:
+        region_name: CloudStack
+      template: { get_file: "cs-client.yaml" }
+      timeout: 60
+      parameters:
+        vpn_server_external_ip: { get_attr: [ vpn_server_stack, outputs, vpn_server_external_ip ]}
+        script: { get_file: ./scripts/setup_server.sh }
+        api_endpoint: { get_param: api_endpoint }
+        api_key: { get_param: api_key }
+        api_secret: { get_param: api_secret }
+        service_offering_id: { get_param: service_offering_id }
+        template_id: { get_param: template_id }
+        zone_id: { get_param: zone_id }
+        network_offering_id: { get_param: network_offering_id }
+        subnet_A: { get_param: subnet_A }
+        subnet_B: { get_param: subnet_B }
+        gateway_A: { get_param: gateway_A }
+        gateway_B: { get_param: gateway_B }
+        mask_A: { get_param: mask_A }
+        mask_B: { get_param: mask_B }
+        vpc_id: { get_param: vpc_A_id }
+        public_ssh_key: { get_param: public_ssh_key }
+        acl_id: { get_param: acl_id }

@@ -1,4 +1,4 @@
-# Heat orchestration templates for multi-region Inter-DC connectivity
+# Heat orchestration templates (HOT) for multi-region L3 Inter-DC connectivity
 
 ## CloudStack <-> CloudStack
 

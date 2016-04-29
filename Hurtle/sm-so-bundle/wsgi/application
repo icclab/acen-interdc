@@ -1,0 +1,109 @@
+#!/usr/bin/python
+
+import os
+
+try:
+    virtenv = os.environ.get('OPENSHIFT_PYTHON_DIR', '.') + '/virtenv/'
+    virtualenv = os.path.join(virtenv, 'bin/activate_this.py')
+    execfile(virtualenv, dict(__file__=virtualenv))
+except IOError:
+    print 'error!'
+    pass
+#
+# IMPORTANT: Put any additional includes below this line.  If placed above this
+# line, it's possible required libraries won't be in your searchable path
+#
+
+import so
+
+from sdk.mcn import occi_ext
+
+
+class MyBackend(occi_ext.Backend):
+
+    def create(self, entity, extras):
+        token = extras['token']
+        tenant = extras['tenant_name']
+        self.so = so.ServiceOrchestrator(token, tenant)
+        self.so.so_e.design()
+        entity.actions = [occi_ext.DEPLOY_ACTION]
+
+    def retrieve(self, entity, extras):
+        if occi_ext.DEPLOY_ACTION in entity.actions:
+            entity.attributes['occi.mcn.stack.state'] = 'uninitialized'
+            entity.attributes['occi.mcn.stack.id'] = 'N/A'
+        else:
+            states, stack_ids, stack_output = self.so.so_e.state()
+            state = 'UNKNOWN'
+            if occi_ext.PROVISION_ACTION in entity.actions: # at the deploy phase
+                if 'CREATE_IN_PROGRESS' in states:
+                    state = 'CREATE_IN_PROGRESS'
+                else:
+                    state = 'CREATE_COMPLETE'
+            if len(entity.actions) < 1: # provision state
+                if 'UPDATE_IN_PROGRESS' in states:
+                    state = 'UPDATE_IN_PROGRESS'
+                else:
+                    state = 'UPDATE_COMPLETE'
+            entity.attributes['occi.mcn.stack.state'] = state
+
+            # XXX this is a non-conformant OCCI string
+            entity.attributes['occi.mcn.stack.id'] = '[' + stack_ids[0] + ', ' + stack_ids[1] + ']'
+
+            if stack_output is not None:
+                for output in stack_output:
+                    for kv in output:
+                        entity.attributes[kv['output_key']] = kv['output_value']
+
+    def update(self, old, new, extras):
+        # TODO: attributes would need to be defined by a mixin.
+        old.attributes.update(new.attributes)
+        self.so.so_e.update(old, new, extras)
+
+    def delete(self, entity, extras):
+        self.so.so_e.dispose()
+
+    # Actions
+
+    def deploy_me(self, entity, attributes, extras):
+        self.so.so_e.deploy()
+        entity.actions = [occi_ext.PROVISION_ACTION]
+
+    def provision_me(self, entity, attributes, extras):
+        self.so.so_e.provision()
+        entity.actions = []
+
+application = occi_ext.Application(MyBackend())
+
+#
+# Below for testing only
+#
+if __name__ == '__main__':
+    from wsgiref.simple_server import make_server
+    httpd = make_server('localhost', 8051, application)
+    # Wait for a single request, serve it and quit.
+    httpd.serve_forever()
+
+
+# import requests
+#
+# heads = {'X-Auth-Token':'c83d1eaa6cd94cc78f26d6d83dac0dce', 'X-Tenant-Name':'edmo', 'Content-Type':'text/occi', 'Accept':'text/occi'}
+#
+# heads['Category']='orchestrator; scheme="http://schemas.mobile-cloud-networking.eu/occi/service#"'
+# r = requests.put('http://127.0.0.1:8051/orchestrator/default', headers=heads)
+#
+# heads['Category']='deploy; scheme="http://schemas.mobile-cloud-networking.eu/occi/service#"'
+# r = requests.post('http://127.0.0.1:8051/orchestrator/default?action=deploy', headers=heads)
+#
+# r = requests.get('http://127.0.0.1:8051/orchestrator/default', headers=heads); r.headers
+#
+# heads['Category']='provision; scheme="http://schemas.mobile-cloud-networking.eu/occi/service#"'
+# r = requests.post('http://127.0.0.1:8051/orchestrator/default?action=provision', headers=heads)
+#
+# r = requests.get('http://127.0.0.1:8051/orchestrator/default', headers=heads)
+#
+# #r = requests.delete('http://127.0.0.1:8051/orchestrator/default', headers=heads)
+#
+# # need a link handler in the SO to fix this
+# # r = requests.get('http://127.0.0.1:8051/-/', headers=heads)
+

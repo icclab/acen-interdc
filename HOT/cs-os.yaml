@@ -121,6 +121,8 @@ resources:
         vpc_id: { get_param: vpc_id }
         public_ssh_key: { get_param: public_ssh_key }
         acl_id: { get_param: acl_id }
+        cidr_A: { get_param: cidr_A }
+        cidr_B: { get_param: cidr_B }
 
   vpn_client_stack:
     type: OS::Heat::Stack
@@ -140,6 +142,7 @@ resources:
         public_ssh_key: { get_param: public_ssh_key }
         flavor: { get_param: flavor }
         image: {get_param: image }
-        gateway: { get_param: gateway_B }
+        gateway_A: { get_param: gateway_A }
+        gateway_B: { get_param: gateway_B }
         cidr_A: { get_param: cidr_A }
         cidr_B: { get_param: cidr_B }

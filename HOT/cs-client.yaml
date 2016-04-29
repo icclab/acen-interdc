@@ -31,6 +31,14 @@ parameters:
     type: string
     description: CloudStack network offering ID
 
+  cidr_A:
+    type: string
+    description: network A CIDR (not used by CloudStack template)
+
+  cidr_B:
+    type: string
+    description: network B CIDR (not used by CloudStack template)
+
   subnet_A:
     type: string
     description: Subnet A

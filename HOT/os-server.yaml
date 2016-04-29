@@ -36,9 +36,13 @@ parameters:
     type: string
     description: OpenStack VM image
 
-  gateway:
+  gateway_A:
     type: string
     description: OpenStack network GW
+
+  gateway_B:
+    type: string
+    description: site_B gateway (not used within this template)
 
   cidr_A:
     type: string
@@ -60,7 +64,7 @@ resources:
     properties:
       network_id: { get_resource: private_net }
       cidr: { get_param: cidr_B }
-      gateway_ip: { get_param: gateway }
+      gateway_ip: { get_param: gateway_A }
 
   router:
     type: OS::Neutron::Router

@@ -1,0 +1,160 @@
+heat_template_version: 2013-05-23
+
+description: NFV UC1 - multi region InterDC connectivity
+
+parameters:
+  api_endpoint:
+    type: string
+    description: Cloudstack API endpoint
+
+  api_key:
+    type: string
+    description: API key
+    
+  api_secret:
+    type: string
+    description: API secret key
+
+  service_offering_id:
+    type: string
+    description: CloudStack service offering ID
+    default: 2b7cadf0-8a7a-4969-a009-9e7a1ad088a4
+
+  template_id:
+    type: string
+    description: CloudStack template ID
+    default: 165304e3-e75e-428d-8652-00a120cbb90c
+
+  zone_id:
+    type: string
+    description: CloudStack zone ID
+    default: 9e165259-d754-4704-9813-f235c4f613f7
+
+  network_offering_id:
+    type: string
+    description: CloudStack network offering ID
+    default: 5465ab42-a551-4ec3-b994-ebb3cc6321cc
+
+  cidr_A:
+    type: string
+    description: network A CIDR (not used by CloudStack template)
+    default: 10.2.0.0/24
+
+  cidr_B:
+    type: string
+    description: network B CIDR (not used by CloudStack template)
+    default: 10.2.3.0/24
+
+  subnet_A:
+    type: string
+    description: Subnet A
+    default: 10.2.0.0
+
+  subnet_B:
+    type: string
+    description: Subnet B
+    default: 10.3.4.0
+
+  gateway_A:
+    type: string
+    description: Gateway A
+    default: 10.2.0.1
+
+  gateway_B:
+    type: string
+    description: Gateway B
+    default: 10.2.3.1
+
+  mask_A:
+    type: string
+    description: Mask A
+    default: 255.255.255.0
+
+  mask_B:
+    type: string
+    description: Mask B
+    default: 255.255.255.0
+
+  vpc_id:
+    type: string
+    description: CloudStack VPC ID
+    default: fc313c2f-0360-4339-a2a7-330a0a02100c
+
+  public_ssh_key:
+    type: string
+    description: Public SSH key
+    default: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCoAv8WGeqtGket7cSai5zkYbOkh9a3FFH5yKQWHaxdGZfs9RU7CNbJJ39on4/+RoeffF3YK54EjYW4LtANFGzB8jwQuArO+3H1vLwxSkDTeHgBNfV2daGN00/9BmO1mBvVK3Re76rimvjH8Rm7y0Jc39RTZgeiNF0DL4uWOl2S0nVu2qyYZ7WIWNjPfknYeVUPNJUiEONBNfF7KPdrsGsUlyhQm0/O0+R3g4hU6PeAtOPTVUR43Z1mmrfW8oVp2i/0k3I9ld78suBe7De8IpwhDs/rrB7BNLQ34eA2Sgl/Xcjlkj7+XfiYIJ5Iv7KJcqJlhhnVQmBZ7G8kr46VfNvB vojtechcima@Vojtechs-MacBook-Pro.local
+
+  acl_id:
+    type: string
+    description: ACL ID
+    default: ab06abac-0719-11e5-ba7e-5254009abd48
+
+  script:
+    type: string
+    description: Init script
+
+resources:
+  network:
+    type: Cloudstack::Network::Network
+    properties:
+      api_endpoint: { get_param: api_endpoint }
+      api_key: { get_param: api_key }
+      api_secret: { get_param: api_secret }
+      name: network-A
+      display_text: network-B
+      network_offering_id: { get_param: network_offering_id }
+      zone_id: { get_param: zone_id }
+      gateway: { get_param: gateway_A }
+      netmask: { get_param: mask_A }
+      vpc_id: { get_param: vpc_id }
+      acl_id: { get_param: acl_id }
+
+  vpn_server:
+    type: Cloudstack::Compute::VirtualMachine
+    properties:
+      api_endpoint: { get_param: api_endpoint }
+      api_key: { get_param: api_key }
+      api_secret: { get_param: api_secret }
+      name: vpn-server
+      template_id: { get_param: template_id }
+      service_offering_id: { get_param: service_offering_id }
+      network_ids: [ { get_attr: [ network, id ] } ]
+      zone_id: { get_param: zone_id }
+      user_data:
+        str_replace:
+          template: { get_param: script }
+          params:
+            $vpn_server_addr: { get_attr: [ vpn_server_floating_ip, ipaddress ] }
+            $server_subnet: { get_param: subnet_A }
+            $server_mask: { get_param: mask_A }
+            $client_subnet: { get_param: subnet_B }
+            $client_mask: { get_param: mask_B }
+            $sshkey: { get_param: public_ssh_key }
+
+  vpn_server_floating_ip:
+    type: Cloudstack::Network::Address
+    properties:
+      api_endpoint: { get_param: api_endpoint }
+      api_key: { get_param: api_key }
+      api_secret: { get_param: api_secret }
+      vpc_id: { get_param: vpc_id }
+
+  vpn_server_nat:
+    type: Cloudstack::Network::StaticNAT
+    properties:
+      api_endpoint: { get_param: api_endpoint }
+      api_key: { get_param: api_key }
+      api_secret: { get_param: api_secret }
+      ip_address_id: { get_attr: [ vpn_server_floating_ip, id ] }
+      virtual_machine_id: { get_attr: [ vpn_server, id ] }
+      network_id: { get_attr: [ network, id ] }
+
+
+outputs:
+  vpn_server_external_ip:
+    description: Instance external IP address
+    value: { get_attr: [ vpn_server_floating_ip, ipaddress ] }
+  vpn_server_private_ip:
+    description: Instance internal IP address
+    value: { get_attr: [ vpn_server, network_ip ] }

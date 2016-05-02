@@ -18,11 +18,14 @@ os - OpenStack platform
 
 import netaddr
 import os
-import time
 
 from sdk.mcn import util
 from sm.so import service_orchestrator
 from sm.so.service_orchestrator import LOG
+
+from fabric.api import settings
+from fabric.api import sudo
+
 
 class SOE(service_orchestrator.Execution):
 
@@ -69,11 +72,16 @@ class SOE(service_orchestrator.Execution):
         offerings, management ssh & CloudStack APIs keys, etc.
         """
         LOG.info('Deploying...')
-        path = os.path.dirname(os.path.abspath(__file__))
-        cp = os.path.dirname(os.path.abspath(__file__))
-        HOT_dir = os.path.abspath(os.path.join(cp, '../../../', 'HOT'))
-        HOT_A_path = os.path.join(HOT_dir, str(self.site_A_platform) + '-server-keys.yaml')
-        HOT_B_path = os.path.join(HOT_dir, str(self.site_B_platform) + '-client-keys.yaml')
+        HOT_dir = os.path.abspath('./data/')
+        HOT_A_path = os.path.join(
+            HOT_dir, str(
+                self.site_A_platform) + '-server-deploy-keys.yaml')
+        HOT_B_path = os.path.join(
+            HOT_dir, str(
+                self.site_B_platform) + '-client-deploy-keys.yaml')
+
+        LOG.info('HOT A path: %s' % HOT_A_path)
+        LOG.info('HOT B path: %s' % HOT_B_path)
 
         params = {
             'subnet_A': self.site_A_net,
@@ -91,49 +99,54 @@ class SOE(service_orchestrator.Execution):
             """OpenVPN Server endpoint"""
             with open(HOT_A_path, 'r') as f:
                 template = f.read()
-            script_A_path = os.path.join(HOT_dir, 'scripts/setup_server.sh')
+            script_A_path = os.path.join(HOT_dir, 'scripts/server-deploy.sh')
             with open(script_A_path, 'r') as f:
                 script_A = f.read()
             params['script'] = script_A
-            print script_A
             self.site_A_stack_id = self.site_A_deployer.deploy(
                 template, self.token, parameters=params)
             LOG.info('Site A stack ID: ' + self.site_A_stack_id.__repr__())
 
-        # Wait for server side to be created so server's public IP can
-        # be passed to the client. This could be probably solved more elegantly
-        # by applying configuration in the provisioning phase.
-        # TODO: Modify HOT so they only inject SSH keys and proceed
-        # with config using fabric in the next phase.
-        while(self.site_A_deployer.details(
-                self.site_A_stack_id, self.token)['state'] == 'CREATE_IN_PROGRESS'):
-            time.sleep(10)
-
-        # TODO handle possible failure
-        # For now just expecting that stack A was created sucessfully.
-
         if self.site_B_stack_id is None:
             """OpenVPN Client endpoint"""
-            print self.site_A_deployer.details(self.site_A_stack_id, self.token)
-            vpn_server_external_ip = str(self.site_A_deployer.details(
-                self.site_A_stack_id, self.token)['output'][0]['output_value'])
-            params['vpn_server_external_ip'] = vpn_server_external_ip
             with open(HOT_B_path, 'r') as f:
                 template = f.read()
-            script_B_path = os.path.join(HOT_dir, 'scripts/setup_client.sh')
+            script_B_path = os.path.join(HOT_dir, 'scripts/client-deploy.sh')
             with open(script_B_path, 'r') as f:
                 script_B = f.read()
             params['script'] = script_B
-            print script_B
-            self.site_A_stack_id = self.site_B_deployer.deploy(
+            self.site_B_stack_id = self.site_B_deployer.deploy(
                 template, self.token, parameters=params)
             LOG.info('Site B stack ID: ' + self.site_B_stack_id.__repr__())
 
     def provision(self):
-        """
-        Not much to do here. Just adjust routing on both sites.
+        """ Provision SICs
+        Run scripts. Adjust routing on both sites.
         """
         LOG.info('Calling provision...')
+
+        vpn_server_external_ip = str(self.site_A_deployer.details(
+            self.site_A_stack_id, self.token)['output'][0]['output_value'])
+        vpn_client_external_ip = str(self.site_B_deployer.details(
+            self.site_B_stack_id, self.token)['output'][0]['output_value'])
+
+        LOG.info('Server IP address: %s' % vpn_server_external_ip)
+        LOG.info('Client IP address: %s' % vpn_client_external_ip)
+
+        # Use fabric to configure endpoints
+        # #TODO generate management keypair before deploying
+        key_filename = '~/.ssh/id_rsa'
+        with settings(host_string=vpn_server_external_ip,
+                      user='ubuntu',
+                      key_filename=key_filename):
+            sudo('/tmp/acen-interdc-master/setup_server.sh')
+
+        with settings(host_string=vpn_client_external_ip,
+                      user='ubuntu',
+                      key_filename=key_filename):
+            sudo(('echo SERVER_ADDRESS=%s >> /tmp/vars &&'
+                  '/tmp/acen-interdc-master/setup_client.sh') %
+                 vpn_server_external_ip)
 
     def dispose(self):
         """
@@ -153,9 +166,10 @@ class SOE(service_orchestrator.Execution):
         """
         Report on state for both stacks in site_A and site_B
         """
-        if self.site_A_stack_id is not None and self.site_B_stack_id is not None:
-            tmp = self.site_A_deployer.details(self.site_A_stack_id, self.token)
-            print tmp
+        if (self.site_A_stack_id is not None and
+                self.site_B_stack_id is not None):
+            tmp = self.site_A_deployer.details(
+                self.site_A_stack_id, self.token)
             site_A_stack_state = tmp['state']
             LOG.info('Returning Stack output state of site_A')
             # XXX type should be consistent
@@ -165,8 +179,8 @@ class SOE(service_orchestrator.Execution):
             except KeyError:
                 pass
 
-            tmp = self.site_B_deployer.details(self.site_B_stack_id, self.token)
-            print tmp
+            tmp = self.site_B_deployer.details(
+                self.site_B_stack_id, self.token)
             site_B_stack_state = tmp['state']
             LOG.info('Returning Stack output state of site_B')
             site_B_output = ''

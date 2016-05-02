@@ -1,0 +1,141 @@
+heat_template_version: 2013-05-23
+
+parameters:
+  subnet_A:
+    type: string
+    description: Subnet A
+    default: 10.2.0.0 
+
+  subnet_B:
+    type: string
+    description: Subnet B
+    default: 10.3.4.0
+
+  mask_A:
+    type: string
+    description: Mask A
+    default: 255.255.255.0
+
+  mask_B:
+    type: string
+    description: Mask B
+    default: 255.255.255.0
+
+  public_net:
+    type: string
+    description: ID of public network
+    default: 77e659dd-f1b4-430c-ac6f-d92ec0137c85
+
+  public_ssh_key:
+    type: string
+    default: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCoAv8WGeqtGket7cSai5zkYbOkh9a3FFH5yKQWHaxdGZfs9RU7CNbJJ39on4/+RoeffF3YK54EjYW4LtANFGzB8jwQuArO+3H1vLwxSkDTeHgBNfV2daGN00/9BmO1mBvVK3Re76rimvjH8Rm7y0Jc39RTZgeiNF0DL4uWOl2S0nVu2qyYZ7WIWNjPfknYeVUPNJUiEONBNfF7KPdrsGsUlyhQm0/O0+R3g4hU6PeAtOPTVUR43Z1mmrfW8oVp2i/0k3I9ld78suBe7De8IpwhDs/rrB7BNLQ34eA2Sgl/Xcjlkj7+XfiYIJ5Iv7KJcqJlhhnVQmBZ7G8kr46VfNvB vojtechcima@Vojtechs-MacBook-Pro.local
+
+  flavor:
+    type: string
+    description: OpenStack VM flavor
+    default: m1.small
+
+  image:
+    type: string
+    description: OpenStack VM image
+    default: ubuntu-software-config
+
+  gateway_A:
+    type: string
+    description: Network A GW (not used in this template)
+    default: 10.2.0.1
+
+  gateway_B:
+    type: string
+    description: OpenStack network GW
+    default: 10.2.3.1
+
+  cidr_A:
+    type: string
+    description: OpenStack network CIDR
+    default: 10.2.0.0/24
+
+  cidr_B:
+    type: string
+    description: OpenStack network CIDR
+    default: 10.2.3.0/24
+
+  script:
+    type: string
+    description: Init script
+
+resources:
+
+  private_net:
+    type: OS::Neutron::Net
+    properties:
+      name: acen-net
+
+  private_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: private_net }
+      cidr: { get_param: cidr_B }
+      gateway_ip: { get_param: gateway_B }
+
+  router:
+    type: OS::Neutron::Router
+    properties:
+      external_gateway_info:
+        network: { get_param: public_net }
+
+  router_interface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router_id: { get_resource: router }
+      subnet_id: { get_resource: private_subnet }
+
+  sg:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      name: the_sg
+      description: Ping, SSH, OpenVPN
+      rules:
+      - protocol: icmp
+      - protocol: tcp
+        port_range_min: 22
+        port_range_max: 22
+      - protocol: udp
+        port_range_min: 1194
+        port_range_max: 1194
+
+  server:
+    type: OS::Nova::Server
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      networks:
+        - port: { get_resource: my_port }
+      user_data:
+        str_replace:
+          template: { get_param: script }
+          params:
+            $server_subnet: { get_param: subnet_A }
+            $server_mask: { get_param: mask_A }
+            $client_subnet: { get_param: subnet_B }
+            $client_mask: { get_param: mask_B }
+            $sshkey: { get_param: public_ssh_key}
+
+  my_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: {get_resource: private_net}
+      replacement_policy: AUTO
+      security_groups: [{ get_resource: sg }]
+      allowed_address_pairs: [{"ip_address": { get_param: cidr_A }}]
+
+  my_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network_id: { get_param: public_net}
+      port_id: { get_resource:  my_port }
+
+outputs:
+  external_ip:
+    description: Instance external ip
+    value: { get_attr: [ my_floating_ip, floating_ip_address ] }

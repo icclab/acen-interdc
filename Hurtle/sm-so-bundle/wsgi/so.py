@@ -29,20 +29,17 @@ from fabric.api import sudo
 
 class SOE(service_orchestrator.Execution):
 
-    def __init__(self, token, tenant):
+    def __init__(self, token, tenant, attributes):
         super(SOE, self).__init__(token, tenant)
         self.site_A_stack_id = None
         self.site_B_stack_id = None
 
-        # TODO
-        # CIDRs, platform types and regions will be provided
-        # as input parameters.
-        self.site_A_CIDR = '10.2.0.0/24'
-        self.site_B_CIDR = '10.2.4.0/24'
-        self.site_A_platform = 'cs'
-        self.site_B_platform = 'os'
-        self.site_A_region = 'CloudStack'
-        self.site_B_region = 'RegionOne'
+        self.site_A_CIDR = attributes['acen.interdc.site_A.cidr']
+        self.site_B_CIDR = attributes['acen.interdc.site_B.cidr']
+        self.site_A_platform = attributes['acen.interdc.site_A.platform']
+        self.site_B_platform = attributes['acen.interdc.site_B.platform']
+        self.site_A_region = attributes['acen.interdc.site_A.region']
+        self.site_B_region = attributes['acen.interdc.site_B.region']
 
         self.site_A = netaddr.IPNetwork(self.site_A_CIDR)
         self.site_B = netaddr.IPNetwork(self.site_B_CIDR)
@@ -72,7 +69,8 @@ class SOE(service_orchestrator.Execution):
         offerings, management ssh & CloudStack APIs keys, etc.
         """
         LOG.info('Deploying...')
-        HOT_dir = os.path.abspath('./data/')
+        cp = os.path.dirname(os.path.abspath(__file__))
+        HOT_dir = os.path.abspath(os.path.join(cp, '../data/')) 
         HOT_A_path = os.path.join(
             HOT_dir, str(
                 self.site_A_platform) + '-server-deploy-keys.yaml')
@@ -226,7 +224,7 @@ class ServiceOrchestrator(object):
     Sample SO.
     """
 
-    def __init__(self, token, tenant):
-        self.so_e = SOE(token, tenant)
+    def __init__(self, token, tenant, attributes):
+        self.so_e = SOE(token, tenant, attributes)
         self.so_d = SOD(self.so_e, token, tenant)
         # so_d.start()

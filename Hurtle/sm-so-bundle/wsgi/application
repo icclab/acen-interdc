@@ -1,19 +1,5 @@
 #!/usr/bin/python
 
-import os
-
-try:
-    virtenv = os.environ.get('OPENSHIFT_PYTHON_DIR', '.') + '/virtenv/'
-    virtualenv = os.path.join(virtenv, 'bin/activate_this.py')
-    execfile(virtualenv, dict(__file__=virtualenv))
-except IOError:
-    print 'error!'
-    pass
-#
-# IMPORTANT: Put any additional includes below this line.  If placed above this
-# line, it's possible required libraries won't be in your searchable path
-#
-
 import so
 
 from sdk.mcn import occi_ext
@@ -24,7 +10,7 @@ class MyBackend(occi_ext.Backend):
     def create(self, entity, extras):
         token = extras['token']
         tenant = extras['tenant_name']
-        self.so = so.ServiceOrchestrator(token, tenant)
+        self.so = so.ServiceOrchestrator(token, tenant, entity.attributes)
         self.so.so_e.design()
         entity.actions = [occi_ext.DEPLOY_ACTION]
 
@@ -106,4 +92,3 @@ if __name__ == '__main__':
 #
 # # need a link handler in the SO to fix this
 # # r = requests.get('http://127.0.0.1:8051/-/', headers=heads)
-

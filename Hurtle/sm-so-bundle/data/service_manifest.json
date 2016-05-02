@@ -1,0 +1,14 @@
+{
+    "service_type": "http://schemas.mobile-cloud-networking.eu/occi/sm#interdc",
+    "service_description": "L3 interDC connectivity",
+    "service_attributes": {
+      "acen.interdc.site_A.cidr":    "",
+      "acen.interdc.site_B.cidr":    "",
+      "acen.interdc.site_A.platform":    "",
+      "acen.interdc.site_B.platform":    "",
+      "acen.interdc.site_A.region":    "",
+      "acen.interdc.site_B.region":    ""
+    },
+    "service_endpoint": "http://127.0.0.1:8890/interdc/",
+    "depends_on": []
+}

@@ -1,0 +1,11 @@
+curl -v -X PUT http://localhost:8051/orchestrator/default \
+-H 'Content-Type: text/occi' \
+-H 'Category: orchestrator; scheme="http://schemas.mobile-cloud-networking.eu/occi/service#"' \
+-H 'X-Auth-Token: '$KID \
+-H 'X-Tenant-Name: '$TENANT \
+-H 'X-OCCI-Attribute: acen.interdc.site_A.cidr="10.2.0.0/24"' \
+-H 'X-OCCI-Attribute: acen.interdc.site_B.cidr="10.2.4.0/24"' \
+-H 'X-OCCI-Attribute: acen.interdc.site_A.platform="cs"' \
+-H 'X-OCCI-Attribute: acen.interdc.site_B.platform="os"' \
+-H 'X-OCCI-Attribute: acen.interdc.site_A.region="CloudStack"' \
+-H 'X-OCCI-Attribute: acen.interdc.site_B.region="RegionOne"'

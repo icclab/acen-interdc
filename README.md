@@ -1,8 +1,15 @@
-# ACEN - NFV USE CASE 1 (UC1) - Inter-DC connectivity
+ACEN - NFV USE CASE 1 (UC1) - Inter-DC connectivity
+===================================================
 
-Simple OpenVPN client-server setup providing inter-datacenter connectivity.
+Simple OpenVPN client-server setup providing L3 inter-datacenter connectivity.
 
-Please set environment variables in the settings file accordingly before running scripts.
+Repository structure:
+
+ * `./HOT` contains Heat orchestration templates providing multi-region interDC connectivity between CloudStack and OpenStack deployments. Please see this [README file](./Heat/README.md) for more information.
+ * `./Hurtle/sm-so-bundle` contains [Hurtle](http://hurtle.it) service manager (SM) and service orchestrator (SO) implementation which enable to deliver interDC L3 connectivity as-a-service. Please see this [README file](./Hurtle/sm-so-bundle/README.md) for more information.
+ * `*.sh` files are configuration scripts used to install and configure OpenVPN VPN endpoints.
+
+## Architecture
 
 Example network schema :
 
@@ -43,10 +50,6 @@ Example network schema :
           |  0.0.0.0/0 -> 10.0.0.1(eth0)   |            |  0.0.0.0/24 -> 10.0.1.1(eth0) |
           |  10.0.0.0/24 -> 0.0.0.0(eth0)  |            |  10.0.1.0/24 -> 0.0.0.0(eth0) |
           +--------------------------------+            +-------------------------------+
-
-## Heat Orchestration Templates
-
-More information on multi-region InterDC Heat orchestration templates can be found [here](./Heat/README.md).
 
 ## Acknowledgment
 This work was made possible by the [KTI ACEN project](http://blog.zhaw.ch/icclab/acen-begins/) in collaboration with [Citrix](https://www.citrix.com/) and [Exoscale](https://www.exoscale.ch/).

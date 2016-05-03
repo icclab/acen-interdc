@@ -70,7 +70,7 @@ class SOE(service_orchestrator.Execution):
         """
         LOG.info('Deploying...')
         cp = os.path.dirname(os.path.abspath(__file__))
-        HOT_dir = os.path.abspath(os.path.join(cp, '../data/')) 
+        HOT_dir = os.path.abspath(os.path.join(cp, '../data/'))
         HOT_A_path = os.path.join(
             HOT_dir, str(
                 self.site_A_platform) + '-server-deploy-keys.yaml')
@@ -133,18 +133,28 @@ class SOE(service_orchestrator.Execution):
 
         # Use fabric to configure endpoints
         # #TODO generate management keypair before deploying
-        key_filename = '~/.ssh/id_rsa'
-        with settings(host_string=vpn_server_external_ip,
-                      user='ubuntu',
-                      key_filename=key_filename):
-            sudo('/tmp/acen-interdc-master/setup_server.sh')
 
-        with settings(host_string=vpn_client_external_ip,
+        self._provision_server(vpn_server_external_ip)
+        self._provision_client(vpn_server_external_ip,
+                               vpn_client_external_ip)
+
+    def _provision_client(self, server_ip, client_ip):
+        key_filename = '~/.ssh/id_rsa'
+        with settings(host_string=client_ip,
                       user='ubuntu',
                       key_filename=key_filename):
-            sudo(('echo SERVER_ADDRESS=%s >> /tmp/vars &&'
-                  '/tmp/acen-interdc-master/setup_client.sh') %
-                 vpn_server_external_ip)
+            cmd = (('echo SERVER_ADDRESS=%s >> /tmp/vars && '
+                    '/tmp/acen-interdc-master/setup_client.sh') %
+                   server_ip)
+            sudo(cmd)
+
+    def _provision_server(self, server_ip):
+        key_filename = '~/.ssh/id_rsa'
+        with settings(host_string=server_ip,
+                      user='ubuntu',
+                      key_filename=key_filename):
+            cmd = '/tmp/acen-interdc-master/setup_server.sh'
+            sudo(cmd)
 
     def dispose(self):
         """

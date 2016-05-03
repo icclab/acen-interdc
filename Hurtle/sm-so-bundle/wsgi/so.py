@@ -18,6 +18,9 @@ os - OpenStack platform
 
 import netaddr
 import os
+import Crypto.PublicKey
+import uuid
+
 
 from sdk.mcn import util
 from sm.so import service_orchestrator
@@ -31,6 +34,7 @@ class SOE(service_orchestrator.Execution):
 
     def __init__(self, token, tenant, attributes):
         super(SOE, self).__init__(token, tenant)
+        self.uuid = uuid.uuid4()
         self.site_A_stack_id = None
         self.site_B_stack_id = None
 
@@ -56,6 +60,23 @@ class SOE(service_orchestrator.Execution):
         self.site_B_deployer = util.get_deployer(
             token, url_type='public', tenant_name=tenant,
             region=self.site_B_region)
+
+        self.keypair = Crypto.PublicKey.RSA.generate(2048, os.urandom)
+        self.pem_path = '/tmp/%s.PEM' % str(self.uuid)
+
+    def _save_file(self, filepath, data):
+        with open(filepath, 'w') as f:
+            f.write(data)
+        return filepath
+
+    def _delete_file(self, filepath):
+        os.remove(filepath)
+
+    def _get_public_key(self):
+        return self.keypair.exportKey('OpenSSH')
+
+    def _get_private_key(self):
+        return self.keypair.exportKey('PEM')
 
     def design(self):
         LOG.info('Entered design() - nothing to do here')
@@ -90,6 +111,7 @@ class SOE(service_orchestrator.Execution):
             'mask_B': self.site_B_mask,
             'cidr_A': self.site_A_CIDR,
             'cidr_B': self.site_B_CIDR,
+            'public_ssh_key': self._get_public_key()
         }
         LOG.info('Params: %s' % params)
 
@@ -132,27 +154,26 @@ class SOE(service_orchestrator.Execution):
         LOG.info('Client IP address: %s' % vpn_client_external_ip)
 
         # Use fabric to configure endpoints
-        # #TODO generate management keypair before deploying
-
+        # Create temporary PEM file
+        self._save_file(self.pem_path, self._get_private_key())
         self._provision_server(vpn_server_external_ip)
         self._provision_client(vpn_server_external_ip,
                                vpn_client_external_ip)
+        self._delete_file(self.pem_path)
 
     def _provision_client(self, server_ip, client_ip):
-        key_filename = '~/.ssh/id_rsa'
         with settings(host_string=client_ip,
                       user='ubuntu',
-                      key_filename=key_filename):
+                      key_filename=self.pem_path):
             cmd = (('echo SERVER_ADDRESS=%s >> /tmp/vars && '
                     '/tmp/acen-interdc-master/setup_client.sh') %
                    server_ip)
             sudo(cmd)
 
     def _provision_server(self, server_ip):
-        key_filename = '~/.ssh/id_rsa'
         with settings(host_string=server_ip,
                       user='ubuntu',
-                      key_filename=key_filename):
+                      key_filename=self.pem_path):
             cmd = '/tmp/acen-interdc-master/setup_server.sh'
             sudo(cmd)
 
